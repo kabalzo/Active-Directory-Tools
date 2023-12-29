@@ -1,6 +1,18 @@
+#####################################
+# Drew Kabala - IT Support Analyst	#
+# The University of Iowa - 2023     #
+# drew-kabala@uiowa.edu             #
+# dkabala.2011@gmail.comment        #
+# https://github.com/kabalzo        #
+#####################################
 $host.ui.RawUI.WindowTitle = 'Clone User AD Access'
 Import-Module ActiveDirectory
-. "$PSScriptRoot.\scripts\Clone-Functions.ps1"
+
+#Uncomment this line and comment out the other if you run it via the shortcut or by the .ps1
+#. "$PSScriptRoot.\Functions.ps1"
+
+#Uncomment this line and comment out the other if you run it via the .exe
+. "$PSScriptRoot.\scripts\Functions.ps1"
 
 $donorID = $null
 $receiverID = $null
@@ -27,7 +39,7 @@ while ($true)
 	#Execute if the OU is valid top level
 	if ($verifiedOU -ne $null) 
 	{
-		$groupsToCopy = LookForGroupsToCopy -VerifiedOU $verifiedOU -VerifiedID $donorID
+		$groupsToCopy = LookForGroups -VerifiedOU $verifiedOU -VerifiedID $donorID -Task "copy"
 		if ($groupsToCopy -ne $null) 
 		{
 			#Give user an option to cancel and exit the program or continue and copy groups
@@ -37,7 +49,7 @@ while ($true)
 				{
 					foreach ($group in $groupsToCopy) 
 					{
-						Add-ADGroupMember -Identity $group -Members $receiverID
+						Add-ADGroupMember -Identity $group -Members $receiverID -Confirm:$false
 						$shortName = $group -replace ",OU=.*", ""
 						Write-Host "Added '$receiverID' to '$shortName'" -ForeGroundColor DarkGreen
 					}
@@ -50,3 +62,5 @@ while ($true)
 		}
 	}	
 }
+Write-Host "This window will close in 10 seconds"
+timeout /t 10

@@ -1,41 +1,66 @@
-$userToRemoveGroupsFrom = Read-Host 'Enter hawkid to remove groups'
-while ($true) {
-	$OU_ToRemoveGroupsFrom = Read-Host "Enter OU from which to remove all groups from '"$userToRemoveGroupsFrom"'"
+#####################################
+# Drew Kabala - IT Support Analyst	#
+# The University of Iowa - 2023     #
+# drew-kabala@uiowa.edu             #
+# dkabala.2011@gmail.comment        #
+# https://github.com/kabalzo        #
+#####################################
+$host.ui.RawUI.WindowTitle = 'Purge User AD Access'
+Import-Module ActiveDirectory
 
-	$listOfGroupsToRemoveFromUser = Get-ADUser -Identity $userToRemoveGroupsFrom -Properties memberof | Select-Object -ExpandProperty memberof | Select-String $OU_ToRemoveGroupsFrom
+#Uncomment this line and comment out the other if you run it via the shortcut or by the .ps1
+#. "$PSScriptRoot.\Functions.ps1"
 
-	if ($null -eq $listOfGroupsToRemoveFromUser) {
-		#Write-Host "One"
-		Write-Host "No groups found under " $OU_ToRemoveGroupsFrom " for " $userToRemoveGroupsFrom
-	}
-	else {
-		#Write-Host "Two"
-		#Write-Host $listOfGroupsToRemoveFromUser
+#Uncomment this line and comment out the other if you run it via the .exe
+. "$PSScriptRoot.\scripts\Functions.ps1"
 
-		$newListOfGroupsToRemoveFromUser = New-Object -TypeName 'System.Collections.ArrayList'
-		 foreach ($g in $listOfGroupsToRemoveFromUser) {
-			$newListOfGroupsToRemoveFromUser.add($g.ToString())
-		}
-		
-		foreach ($group in $newListOfGroupsToRemoveFromUser){
-			Remove-ADGroupMember -Identity $group -Members $userToRemoveGroupsFrom -Confirm:$false
-		}
-		
-	}
-	while ($true) {
-		$endProgram = Read-Host "Would you like to remove groups from another OU?:`n Enter [y] to continue [n] to exit"
-		if ($endProgram -eq "y" -or $endProgram -eq "Y" ) {
+$userID = $null
+#Verify that the ID you want to remove groups from is valid and give the user a chance to re-enter if it is not
+while ($true) 
+{
+	$userID = VerifyUserName -ID (Read-Host "Enter a userID to remove groups from")
+	if ($userID -ne $null) {break}
+}
+
+#After both IDs have been verified, prompt for the OU you to copy and then copy groups
+#If the user chooses to exit the program from within the InvalidUserName function, this code will never run
+while ($true)
+{
+	$verifiedOU = VerifyOU -UnverifiedOU (Read-Host "Enter the OU for which you want to remove groups. Only top level orgs are valid")
+	
+	#Execute if the OU is valid top level
+	if ($verifiedOU -ne $null) 
+	{
+		$groupsToRemove = LookForGroups -VerifiedOU $verifiedOU -VerifiedID $userID -Task "purge"
+		if ($groupsToRemove -ne $null) 
+		{
+			#Give user an option to cancel and exit the program or continue and copy groups
+			while ($true)
+			{
+				if (QuitProgram -Exit (Read-Host "`nProceed [y] [n]?") -eq $true) 
+				{
+					foreach ($group in $groupsToRemove) 
+					{
+						Remove-ADGroupMember -Identity $group -Members $userID -Confirm:$false
+						$shortName = $group -replace ",OU=.*", ""
+						Write-Host "Removed '$userID' from '$shortName'" -ForeGroundColor DarkGreen
+					}
+					Write-Host "`nFinished removing security groups from '$userID'`n" -ForeGroundColor DarkGray
+					Write-Host "Goodbye" -ForeGroundColor Yellow
+					break
+				}
+			}
 			break
 		}
-		elseif ($endProgram -eq 'n' -or $endProgram -eq "N") {
-			Write-Host "Goodbye"
-			exit
-		} 
-		else {
-			Write-Host "You have entered an unsupported command. Please try again."
-		}
-	}
+	}	
 }
+Write-Host "This window will close in 10 seconds"
+timeout /t 10
+
+
+
+
+
 
 
 
